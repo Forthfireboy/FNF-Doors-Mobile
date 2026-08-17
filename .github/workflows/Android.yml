@@ -23,6 +23,10 @@ jobs:
          haxelib run hmm install
          haxelib run lime rebuild hxcpp
 
+      - name: Patch Flixel UI Version Check
+        run: |
+         sed -i 's/2\.6\.2 or newer/2.6.1 or newer/g' .haxelib/flixel/git/flixel/system/macros/FlxDefines.hx
+
       - name: Configure Android
         run: |
           haxelib run lime setup -alias -y
