@@ -36,7 +36,7 @@
     {
       "name": "flixel-ui",
       "type": "haxelib",
-      "version": "2.7.0"
+      "version": "2.6.5"
     },
     {
       "name": "flxgif",
