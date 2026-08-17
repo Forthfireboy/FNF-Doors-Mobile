@@ -24,7 +24,7 @@
       "type": "git",
       "dir": null,
       "ref": "dev",
-      "url": "https://github.com/CodenameCrew/cne-flixel"
+      "url": "https://github.com/swordcube/cne-flixel"
     },
     {
       "name": "flixel-addons",
