@@ -23,8 +23,8 @@
       "name": "flixel",
       "type": "git",
       "dir": null,
-      "ref": "old",
-      "url": "https://github.com/CodenameCrew/cne-flixel"
+      "ref": "dev",
+      "url": "https://github.com/AnDevGo/cne-flixel"
     },
     {
       "name": "flixel-addons",
