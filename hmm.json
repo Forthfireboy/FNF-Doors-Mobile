@@ -23,7 +23,7 @@
       "name": "flixel",
       "type": "git",
       "dir": null,
-      "ref": "dummy/audio-rework",
+      "ref": "old",
       "url": "https://github.com/CodenameCrew/cne-flixel"
     },
     {
