@@ -23,20 +23,20 @@
       "name": "flixel",
       "type": "git",
       "dir": null,
-      "ref": "dev",
+      "ref": "old",
       "url": "https://github.com/CodenameCrew/cne-flixel"
     },
     {
       "name": "flixel-addons",
       "type": "git",
       "dir": null,
-      "ref": "dev",
+      "ref": "old",
       "url": "https://github.com/CodenameCrew/cne-flixel-addons"
     },
     {
       "name": "flixel-ui",
       "type": "haxelib",
-      "version": "2.6.5"
+      "version": "2.6.2"
     },
     {
       "name": "flxgif",
