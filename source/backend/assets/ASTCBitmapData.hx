@@ -71,7 +71,7 @@ class ASTCBitmapData {
 		}
 
 		// Access GL via reflection to avoid private-field compile errors
-		var gl = try { Reflect.field(context, 'gl') } catch(e:Dynamic) { null };
+		var gl = try Reflect.field(context, 'gl') catch(e:Dynamic) null;
 		if (gl == null) {
 			// If we couldn't get the raw gl, abort - runtime path not available
 			trace('Unable to access GL from Context3D for ASTC upload: ' + assetID);
