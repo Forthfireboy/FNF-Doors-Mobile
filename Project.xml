@@ -172,6 +172,7 @@
 
 	<!-- Mobile Shit -->
 <section if="android">
+	<config:android astc-textures="true" astc-strip-png="true" astc-blocksize="12x12" astc-quality="medium" astc-colorprofile="cl" />
     <config:android permission="android.permission.MANAGE_MEDIA"/> 
 	<config:android permission="android.permission.MANAGE_EXTERNAL_STORAGE"/>
 	<config:android permission="android.permission.WRITE_EXTERNAL_STORAGE" />
