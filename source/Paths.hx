@@ -28,6 +28,9 @@ import flash.media.Sound;
 
 using StringTools;
 
+import backend.system.Flags;
+import backend.assets.ASTCBitmapData;
+
 class Paths
 {
 	inline public static var SOUND_EXT = #if web "mp3" #else "ogg" #end;
@@ -194,48 +197,48 @@ class Paths
 		return 'assets/$file';
 	}
 
-	inline static public function file(file:String, type:AssetType = TEXT, ?library:String)
+	inline public static function file(file:String, type:AssetType = TEXT, ?library:String)
 	{
 		return getPath(file, type, library);
 	}
 
-	inline static public function txt(key:String, ?library:String)
+	inline public static function txt(key:String, ?library:String)
 	{
 		return getPath('data/$key.txt', TEXT, library);
 	}
 
-	inline static public function xml(key:String, ?library:String)
+	inline public static function xml(key:String, ?library:String)
 	{
 		return getPath('data/$key.xml', TEXT, library);
 	}
 
-	inline static public function json(key:String, ?library:String)
+	inline public static function json(key:String, ?library:String)
 	{
 		return getPath('data/$key.json', TEXT, library);
 	}
 
-	inline static public function shaderFragment(key:String, ?library:String)
+	inline public static function shaderFragment(key:String, ?library:String)
 	{
 		return getPath('shaders/$key.frag', TEXT, library);
 	}
 
-	inline static public function shaderVertex(key:String, ?library:String)
+	inline public static function shaderVertex(key:String, ?library:String)
 	{
 		return getPath('shaders/$key.vert', TEXT, library);
 	}
 
-	inline static public function lua(key:String, ?library:String)
+	inline public static function lua(key:String, ?library:String)
 	{
 		return getPath('$key.lua', TEXT, library);
 	}
 
-	inline static public function gif(key:String, ?library:String)
+	inline public static function gif(key:String, ?library:String)
 	{
 		return getPath('$key.gif', BINARY, library);
 	}
 
-
-
+	
+	
 	static public function video(key:String)
 	{
 		#if MODS_ALLOWED
@@ -253,24 +256,24 @@ class Paths
 		return sound;
 	}
 
-	inline static public function soundRandom(key:String, min:Int, max:Int, ?library:String)
+	inline public static function soundRandom(key:String, min:Int, max:Int, ?library:String)
 	{
 		return sound(key + FlxG.random.int(min, max), library);
 	}
 
-	inline static public function music(key:String, ?library:String):Sound
+	inline public static function music(key:String, ?library:String):Sound
 	{
 		var file:Sound = returnSound('music', key, library);
 		return file;
 	}
 
-	inline static public function voices(song:String):Any
+	inline public static function voices(song:String):Any
 	{
 		var voices = wackyFix(song, 'voices');
 		return voices;
 	}
 
-	inline static public function inst(song:String):Any
+	inline public static function inst(song:String):Any
 	{
 		var inst = wackyFix(song, 'inst');
 		return inst;
@@ -309,14 +312,33 @@ class Paths
 		else
 		#end
 		{
-			file = getPath('images/$key.png', IMAGE, library);
-			if (currentTrackedAssets.exists(file))
+			// Try runtime ASTC when available & enabled
+			if (Flags.ASTC_TEXTURES && Flags.ASTC_PREFER_RUNTIME)
 			{
-				localTrackedAssets.push(file);
-				return currentTrackedAssets.get(file);
+				var astcPath = getPath('images/$key.' + Flags.ASTC_IMAGE_EXT, IMAGE, library);
+				if (astcPath != null && OpenFlAssets.exists(astcPath, IMAGE))
+				{
+					var astcBitmap = ASTCBitmapData.fromAsset(astcPath);
+					if (astcBitmap != null)
+					{
+						bitmap = astcBitmap;
+						file = astcPath;
+					}
+				}
 			}
-			else if (OpenFlAssets.exists(file, IMAGE))
-				bitmap = OpenFlAssets.getBitmapData(file);
+
+			// If ASTC not used / failed, fallback to PNG
+			if (bitmap == null)
+			{
+				file = getPath('images/$key.png', IMAGE, library);
+				if (currentTrackedAssets.exists(file))
+				{
+					localTrackedAssets.push(file);
+					return currentTrackedAssets.get(file);
+				}
+				else if (OpenFlAssets.exists(file, IMAGE))
+					bitmap = OpenFlAssets.getBitmapData(file);
+			}
 		}
 
 		if (bitmap != null)
@@ -324,12 +346,20 @@ class Paths
 			localTrackedAssets.push(file);
 			if (allowGPU && ClientPrefs.data.cacheOnGPU)
 			{
-				var texture:RectangleTexture = FlxG.stage.context3D.createRectangleTexture(bitmap.width, bitmap.height, BGRA, true);
-				texture.uploadFromBitmapData(bitmap);
-				bitmap.image.data = null;
-				bitmap.dispose();
-				bitmap.disposeImage();
-				bitmap = BitmapData.fromTexture(texture);
+				var isGPUOnly:Bool = false;
+				try {
+					isGPUOnly = (bitmap != null && Reflect.hasField(bitmap, "__texture") && Reflect.field(bitmap, "__texture") != null);
+				} catch(e:Dynamic) { isGPUOnly = false; }
+
+				if (!isGPUOnly)
+				{
+					var texture:RectangleTexture = FlxG.stage.context3D.createRectangleTexture(bitmap.width, bitmap.height, BGRA, true);
+					texture.uploadFromBitmapData(bitmap);
+					bitmap.image.data = null;
+					bitmap.dispose();
+					bitmap.disposeImage();
+					bitmap = BitmapData.fromTexture(texture);
+				}
 			}
 			var newGraphic:FlxGraphic = FlxGraphic.fromBitmapData(bitmap, false, file);
 			newGraphic.persist = true;
@@ -379,7 +409,7 @@ class Paths
 		return 'assets/fonts/$key';
 	}
 
-	inline static public function fileExists(key:String, type:AssetType, ?ignoreMods:Bool = false, ?library:String)
+	inline public static function fileExists(key:String, type:AssetType, ?ignoreMods:Bool = false, ?library:String)
 	{
 		#if MODS_ALLOWED
 		if(FileSystem.exists(mods(currentModDirectory + '/' + key)) || FileSystem.exists(mods(key))) {
@@ -524,7 +554,7 @@ class Paths
 			var fileToCheck:String = mods(mod + '/' + key);
 			if(FileSystem.exists(fileToCheck))
 				return fileToCheck;
-
+		
 		}
 		return 'mods/' + key;
 	}
@@ -667,7 +697,7 @@ class Paths
 				{
 					var st:String = '$i';
 					if(i == 0) st = '';
-	
+			
 					if(!changedAtlasJson)
 					{
 						spriteJson = getTextFromFile('images/$originalPath/spritemap$st.json');
@@ -686,13 +716,13 @@ class Paths
 						break;
 					}
 				}
-	
+			
 				if(!changedImage)
 				{
 					changedImage = true;
 					folderOrImg = Paths.image(originalPath);
 				}
-	
+			
 				if(!changedAnimJson)
 				{
 					changedAnimJson = true;
