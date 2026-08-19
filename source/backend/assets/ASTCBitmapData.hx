@@ -65,12 +65,19 @@ class ASTCBitmapData {
 
 		var stage = Lib.current != null ? Lib.current.stage : null;
 		var context = stage != null ? stage.context3D : null;
-		if (context == null || context.gl == null) {
+		if (context == null) {
 			trace('ASTC texture requested before Context3D is ready: ' + assetID);
 			return null;
 		}
 
-		var gl = context.gl;
+		// Access GL via reflection to avoid private-field compile errors
+		var gl = try { Reflect.field(context, 'gl') } catch(e:Dynamic) { null };
+		if (gl == null) {
+			// If we couldn't get the raw gl, abort - runtime path not available
+			trace('Unable to access GL from Context3D for ASTC upload: ' + assetID);
+			return null;
+		}
+
 		var extension = null;
 		var extNames = [
 			"KHR_texture_compression_astc_ldr",
@@ -80,7 +87,15 @@ class ASTCBitmapData {
 			"WEBGL_compressed_texture_astc_ldr"
 		];
 		for (n in extNames) {
-			extension = gl.getExtension(n);
+			try {
+				if (Reflect.hasField(gl, 'getExtension')) {
+					extension = Reflect.callMethod(gl, Reflect.field(gl, 'getExtension'), [n]);
+				} else {
+					extension = gl.getExtension(n);
+				}
+			} catch(e:Dynamic) {
+				extension = null;
+			}
 			if (extension != null) break;
 		}
 		if (extension == null) {
@@ -104,30 +119,58 @@ class ASTCBitmapData {
 		];
 		for (i in 0...constNames.length) {
 			var nm = constNames[i];
-			if (Reflect.hasField(extension, nm)) {
-				extConst = Reflect.field(extension, nm);
-				break;
-			}
+			try {
+				if (Reflect.hasField(extension, nm)) {
+					extConst = Reflect.field(extension, nm);
+					break;
+				}
+			} catch(e:Dynamic) {}
 		}
 		var usedFormat = (extConst != 0) ? extConst : numericFormat;
 
 		try {
 			var texture:Texture = context.createTexture(width, height, Context3DTextureFormat.BGRA, false, 0);
-			texture.__format = usedFormat;
-			texture.__internalFormat = usedFormat;
+			// set internal fields via reflection where necessary
+			try { Reflect.setField(texture, '__format', usedFormat); } catch(e:Dynamic) {}
+			try { Reflect.setField(texture, '__internalFormat', usedFormat); } catch(e:Dynamic) {}
 
-			context.__bindGLTexture2D(texture.__textureID);
-			gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-			gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-			gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-			gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-			gl.compressedTexImage2D(texture.__textureTarget, 0, usedFormat, width, height, 0,
-				UInt8Array.fromBytes(bytes, HEADER_SIZE, bytes.length - HEADER_SIZE));
-			context.__bindGLTexture2D(null);
+			var bindFunc = try { Reflect.field(context, '__bindGLTexture2D') } catch(e:Dynamic) { null };
+			var textureID = try { Reflect.field(texture, '__textureID') } catch(e:Dynamic) { null };
+			var textureTarget = try { Reflect.field(texture, '__textureTarget') } catch(e:Dynamic) { null };
+			if (bindFunc == null || textureID == null || textureTarget == null) {
+				trace('Required internal texture/context fields are missing for ASTC upload: ' + assetID);
+				return null;
+			}
+
+			// bind and upload
+			Reflect.callMethod(context, bindFunc, [textureID]);
+			try {
+				if (Reflect.hasField(gl, 'texParameteri')) {
+					Reflect.callMethod(gl, Reflect.field(gl, 'texParameteri'), [Reflect.field(gl, 'TEXTURE_2D'), Reflect.field(gl, 'TEXTURE_MIN_FILTER'), Reflect.field(gl, 'LINEAR')]);
+					Reflect.callMethod(gl, Reflect.field(gl, 'texParameteri'), [Reflect.field(gl, 'TEXTURE_2D'), Reflect.field(gl, 'TEXTURE_MAG_FILTER'), Reflect.field(gl, 'LINEAR')]);
+					Reflect.callMethod(gl, Reflect.field(gl, 'texParameteri'), [Reflect.field(gl, 'TEXTURE_2D'), Reflect.field(gl, 'TEXTURE_WRAP_S'), Reflect.field(gl, 'CLAMP_TO_EDGE')]);
+					Reflect.callMethod(gl, Reflect.field(gl, 'texParameteri'), [Reflect.field(gl, 'TEXTURE_2D'), Reflect.field(gl, 'TEXTURE_WRAP_T'), Reflect.field(gl, 'CLAMP_TO_EDGE')]);
+					Reflect.callMethod(gl, Reflect.field(gl, 'compressedTexImage2D'), [textureTarget, 0, usedFormat, width, height, 0, UInt8Array.fromBytes(bytes, HEADER_SIZE, bytes.length - HEADER_SIZE)]);
+				} else {
+					// Fallback to calling directly
+					gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+					gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+					gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+					gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+					gl.compressedTexImage2D(textureTarget, 0, usedFormat, width, height, 0, UInt8Array.fromBytes(bytes, HEADER_SIZE, bytes.length - HEADER_SIZE));
+				}
+			} catch(e:Dynamic) {
+				// unbind on error
+				Reflect.callMethod(context, bindFunc, [null]);
+				trace('Failed to upload ASTC texture ' + assetID + ': ' + e);
+				return null;
+			}
+			// unbind
+			Reflect.callMethod(context, bindFunc, [null]);
 
 			return BitmapData.fromTexture(texture);
 		} catch (e:Dynamic) {
-			context.__bindGLTexture2D(null);
+			try { var b = Reflect.field(context, '__bindGLTexture2D'); Reflect.callMethod(context, b, [null]); } catch(e2:Dynamic) {}
 			trace('Failed to upload ASTC texture ' + assetID + ': ' + e);
 			return null;
 		}
