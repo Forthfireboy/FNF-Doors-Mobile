@@ -134,9 +134,9 @@ class ASTCBitmapData {
 			try { Reflect.setField(texture, '__format', usedFormat); } catch(e:Dynamic) {}
 			try { Reflect.setField(texture, '__internalFormat', usedFormat); } catch(e:Dynamic) {}
 
-			var bindFunc = try { Reflect.field(context, '__bindGLTexture2D') } catch(e:Dynamic) { null };
-			var textureID = try { Reflect.field(texture, '__textureID') } catch(e:Dynamic) { null };
-			var textureTarget = try { Reflect.field(texture, '__textureTarget') } catch(e:Dynamic) { null };
+			var bindFunc = try { Reflect.field(context, '__bindGLTexture2D'); } catch(e:Dynamic) { null };
+			var textureID = try { Reflect.field(texture, '__textureID'); } catch(e:Dynamic) { null };
+			var textureTarget = try { Reflect.field(texture, '__textureTarget'); } catch(e:Dynamic) { null };
 			if (bindFunc == null || textureID == null || textureTarget == null) {
 				trace('Required internal texture/context fields are missing for ASTC upload: ' + assetID);
 				return null;
